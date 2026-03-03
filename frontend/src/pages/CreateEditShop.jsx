@@ -1,6 +1,7 @@
 import React from "react";
 import { IoMdArrowRoundBack } from "react-icons/io";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
+import { setMyShopData } from "../redux/ownerSlice";
 import { useNavigate } from "react-router-dom";
 import { GiForkKnifeSpoon } from "react-icons/gi";
 import { useState } from "react";
@@ -18,6 +19,8 @@ const CreateEditShop = () => {
   const [City, setCity] = useState(myShopData?.city || currentCity);
   const [State, setState] = useState(myShopData?.state || currentState);
   const [address, setAddress] = useState(myShopData?.address || currentAddress);
+  const dispatch = useDispatch();
+
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -41,6 +44,10 @@ const CreateEditShop = () => {
         { withCredentials: true },
       );
       console.log(result.data);
+      if (result.data?.shop) {
+        dispatch(setMyShopData(result.data.shop));
+        navigate(-1);
+      }
     } catch (error) {
       console.log(error);
     }

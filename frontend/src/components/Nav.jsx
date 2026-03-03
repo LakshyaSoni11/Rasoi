@@ -9,8 +9,10 @@ import { setUserData } from "../redux/userSlice";
 import { useNavigate } from "react-router-dom";
 
 const Nav = () => {
-  const navigate = useNavigate()
-  const { userData, currentCity } = useSelector((state) => state.user);
+  const navigate = useNavigate();
+  const { userData, currentCity, cartItems } = useSelector(
+    (state) => state.user,
+  );
   const { myShopData } = useSelector((state) => state.owner);
 
   const [showDropdown, setShowDropdown] = useState(false);
@@ -76,19 +78,25 @@ const Nav = () => {
           {userData?.role === "owner" && (
             <div className="flex items-center gap-4">
               {myShopData && (
-                <button className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#ff4d2d] text-white text-sm font-semibold shadow-md hover:bg-[#e64323] transition active:scale-95 cursor-pointer" onClick={()=>navigate('/add-item')}>
+                <button
+                  className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#ff4d2d] text-white text-sm font-semibold shadow-md hover:bg-[#e64323] transition active:scale-95 cursor-pointer"
+                  onClick={() => navigate("/add-item")}
+                >
                   <FaPlus size={14} />
                   Add Item
                 </button>
               )}
 
-              <div className="relative cursor-pointer flex items-center gap-2 px-3 py-1.5 rounded-full bg-white shadow-sm border border-gray-100 hover:shadow-md transition">
+              <div
+                className="relative cursor-pointer flex items-center gap-2 px-3 py-1.5 rounded-full bg-white shadow-sm border border-gray-100 hover:shadow-md transition"
+                onClick={() => navigate("/my-orders")}
+              >
                 <IoReceiptSharp className="text-[#ff4d2d]" size={20} />
                 <span className="font-medium text-xs text-gray-700">
                   Orders
                 </span>
                 <span className="absolute -top-1 -right-1 bg-[#ff4d2d] text-white text-[9px] font-bold w-4 h-4 flex items-center justify-center rounded-full">
-                  3
+                  {/* TODO: Count orders dynamically */}0
                 </span>
               </div>
             </div>
@@ -108,14 +116,20 @@ const Nav = () => {
                 )}
               </div>
 
-              <div className="relative cursor-pointer p-1.5 hover:bg-gray-100 rounded-full transition">
+              <div
+                className="relative cursor-pointer p-1.5 hover:bg-gray-100 rounded-full transition"
+                onClick={() => navigate("/cart")}
+              >
                 <FaShoppingCart className="text-[#ff4d2d]" size={20} />
                 <div className="absolute top-0 right-0 w-[16px] h-[16px] bg-[#ff4d2d] text-white text-[9px] font-bold flex items-center justify-center rounded-full">
-                  2
+                  {cartItems.length}
                 </div>
               </div>
 
-              <button className="hidden md:block px-3 py-1.5 rounded-full bg-[#ff4d2d]/10 text-[#ff4d2d] text-xs font-semibold hover:bg-[#ff4d2d]/20 transition cursor-pointer">
+              <button
+                onClick={() => navigate("/my-orders")}
+                className="hidden md:block px-3 py-1.5 rounded-full bg-[#ff4d2d]/10 text-[#ff4d2d] text-xs font-semibold hover:bg-[#ff4d2d]/20 transition cursor-pointer"
+              >
                 My Orders
               </button>
             </div>

@@ -7,9 +7,12 @@ import {
   FaStar,
 } from "react-icons/fa";
 import { GiChickenLeg } from "react-icons/gi";
+import { useDispatch } from "react-redux";
+import { addToCart } from "../redux/userSlice.js";
 
 const FoodCard = ({ data }) => {
   const [quantity, setQuantity] = useState(0);
+  const dispatch = useDispatch();
   const renderStars = (rating) => {
     const stars = [];
     for (let i = 0; i < 5; i++) {
@@ -90,6 +93,23 @@ const FoodCard = ({ data }) => {
                 onClick={() => setQuantity((prev) => prev + 1)}
               >
                 <FaPlus size={10} />
+              </button>
+              <button
+                className="w-7 h-full flex items-center justify-center hover:bg-gray-100 text-[#ff4d2d] transition-colors font-bold border-l border-[#ff4d2d]"
+                onClick={() =>
+                  dispatch(
+                    addToCart({
+                      id: data._id,
+                      name: data.name,
+                      price: data.price,
+                      image: data.image,
+                      shop: data.shop,
+                      quantity: quantity,
+                    }),
+                  )
+                }
+              >
+                <FaShoppingCart size={10} />
               </button>
             </div>
           )}

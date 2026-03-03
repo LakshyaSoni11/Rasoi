@@ -1,36 +1,57 @@
-import { createSlice } from "@reduxjs/toolkit";
+import { createSlice, current } from "@reduxjs/toolkit";
 
 const userSlice = createSlice({
-    name:"user",
-    initialState:{
-        userData:null,
-        currentCity:null,
-        currentState:null,
+    name: "user",
+    initialState: {
+        userData: null,
+        currentCity: null,
+        currentState: null,
         currentAddress: null,
-        shopsInMyCity:null,
-        itemsInMyCity:null
+        shopsInMyCity: null,
+        itemsInMyCity: null,
+        cartItems: [],
+        myOrders:null
     },
-    reducers:{
-        setUserData:(state, action)=>{
+    reducers: {
+        setUserData: (state, action) => {
             state.userData = action.payload
         },
-        setCurrentCity:(state, action)=>{
+        setCurrentCity: (state, action) => {
             state.currentCity = action.payload
         },
-        setCurrentState:(state, action)=>{
+        setCurrentState: (state, action) => {
             state.currentState = action.payload
         },
-        setCurrentAddress:(state, action) =>{
+        setCurrentAddress: (state, action) => {
             state.currentAddress = action.payload
-        },  
-        setShopsInMyCity:(state, action)=>{
+        },
+        setShopsInMyCity: (state, action) => {
             state.shopsInMyCity = action.payload
         },
-        setItemsInMyCity:(state, action)  =>{
+        setItemsInMyCity: (state, action) => {
             state.itemsInMyCity = action.payload
+        },
+        addToCart: (state, action) => {
+            const cartItem = action.payload
+            const existingItem = state.cartItems.find((item) => item.id === cartItem.id)
+            if (existingItem) {
+                existingItem.quantity += cartItem.quantity
+            } else {
+                state.cartItems.push(cartItem)
+            }
+            console.log("cartItems", current(state.cartItems))
+        },
+        removeFromCart: (state, action) => {
+            state.cartItems = state.cartItems.filter((item) => item.id !== action.payload)
+        },
+        clearCart: (state) => {
+            state.cartItems = []
+        },
+        setMyOrders: (state, action) => {
+            state.myOrders = action.payload
         }
     }
 })
 
-export const {setUserData, setCurrentCity, setCurrentState, setCurrentAddress, setShopsInMyCity, setItemsInMyCity} = userSlice.actions;
+export const { setUserData, setCurrentCity, setCurrentState, setCurrentAddress, setShopsInMyCity, setItemsInMyCity, addToCart, removeFromCart, clearCart, setMyOrders } = userSlice.actions;
 export default userSlice.reducer

@@ -9,7 +9,7 @@ const UserShopCard = ({ shop }) => {
         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
       />
       {/* Name Overlay Bar at Bottom */}
-      <div className="absolute bottom-0 left-0 w-full bg-linear-to-t from-white via-white/90 to-white/70 backdrop-blur-xs py-1 px-1 border-t border-gray-100">
+      <div className="absolute bottom-0 left-0 w-full bg-linear-to-t from-white via-white/40 to-white/20 rounded-lg backdrop-blur-xs py-1 px-1 border-t border-gray-400">
         <p className="text-[10px] sm:text-xs font-bold text-gray-800 text-center whitespace-nowrap overflow-hidden text-ellipsis w-full capitalize">
           {shop?.name}
         </p>
