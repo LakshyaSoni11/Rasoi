@@ -7,6 +7,7 @@ import { setMyOrders } from "../redux/userSlice";
 const useGetMyOrders = () => {
   const [loading, setLoading] = useState(true);
   const dispatch = useDispatch();
+  const refreshTrigger = useSelector((state) => state.user.refreshTrigger);
 
   useEffect(() => {
     const fetchOrders = async () => {
@@ -16,17 +17,16 @@ const useGetMyOrders = () => {
         });
         // Dispatch to Redux
         dispatch(setMyOrders(result.data.orders));
-        console.log("orders", result.data.orders);
       } catch (error) {
         console.log(error);
-        // Dispatch null on error (ensure logged out state)
+        // Dispatch null on error
         dispatch(setMyOrders(null));
       } finally {
         setLoading(false);
       }
     };
     fetchOrders();
-  }, [dispatch]);
+  }, [dispatch, refreshTrigger]);
 
   return { loading };
 };

@@ -10,7 +10,9 @@ const userSlice = createSlice({
         shopsInMyCity: null,
         itemsInMyCity: null,
         cartItems: [],
-        myOrders:null
+        myOrders:null,
+        searchQuery: "",
+        refreshTrigger: 0
     },
     reducers: {
         setUserData: (state, action) => {
@@ -49,9 +51,15 @@ const userSlice = createSlice({
         },
         setMyOrders: (state, action) => {
             state.myOrders = action.payload
+        },
+        setSearchQuery: (state, action) => {
+            state.searchQuery = action.payload
+        },
+        triggerRefresh: (state) => {
+            state.refreshTrigger += 1
         }
     }
 })
 
-export const { setUserData, setCurrentCity, setCurrentState, setCurrentAddress, setShopsInMyCity, setItemsInMyCity, addToCart, removeFromCart, clearCart, setMyOrders } = userSlice.actions;
+export const { setUserData, setCurrentCity, setCurrentState, setCurrentAddress, setShopsInMyCity, setItemsInMyCity, addToCart, removeFromCart, clearCart, setMyOrders, setSearchQuery, triggerRefresh } = userSlice.actions;
 export default userSlice.reducer

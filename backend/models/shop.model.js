@@ -25,9 +25,22 @@ const shopSchema = new mongoose.Schema({
     items:[{
         type:mongoose.Schema.Types.ObjectId,
         ref:"Item"
-    }]
+    }],
+    location:{
+        type:{
+            type:String,
+            enum:["Point"],
+            default:"Point"
+        },
+        coordinates:{
+            type:[Number],
+            required:true
+        }
+    }
     
 },{timestamps:true})
+
+shopSchema.index({ location: "2dsphere" });
 
 const Shop = mongoose.model("Shop", shopSchema)
 export default Shop

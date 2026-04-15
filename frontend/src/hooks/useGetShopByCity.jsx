@@ -7,26 +7,25 @@ import { setShopsInMyCity } from "../redux/userSlice";
 const useGetShopByCity = () => {
   const [loading, setLoading] = useState(true);
   const dispatch = useDispatch();
-  const {currentCity} = useSelector((state)=> state.user)
+  const { currentCity, refreshTrigger } = useSelector((state) => state.user);
+
   useEffect(() => {
     const fetchShops = async () => {
+      if (!currentCity) return;
       try {
         const result = await axios.get(`${serverUrl}/api/shop/get-by-city/${currentCity}`, {
           withCredentials: true,
         });
-        // Dispatch to Redux
         dispatch(setShopsInMyCity(result.data));
-        console.log(result.data)
       } catch (error) {
         console.log(error);
-        // Dispatch null on error (ensure logged out state)
         dispatch(setShopsInMyCity(null));
       } finally {
         setLoading(false);
       }
     };
     fetchShops();
-  }, [dispatch, currentCity]);
+  }, [dispatch, currentCity, refreshTrigger]);
 
   return { loading };
 };

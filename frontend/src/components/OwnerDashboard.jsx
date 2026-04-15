@@ -4,7 +4,20 @@ import { useSelector } from "react-redux";
 import { GiForkKnifeSpoon } from "react-icons/gi";
 import { useNavigate } from "react-router-dom";
 import { MdEdit } from "react-icons/md";
+import { IoMdPin } from "react-icons/io";
+import { MapContainer, TileLayer, Marker } from "react-leaflet";
+import "leaflet/dist/leaflet.css";
+import L from "leaflet";
 import OwnerItemCard from "./OwnerItemCard";
+
+// Fix for default Leaflet icon inclusion in React
+const customIcon = new L.Icon({
+  iconUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png",
+  iconRetinaUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png",
+  shadowUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png",
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+});
 
 const OwnerDashboard = () => {
   const { myShopData } = useSelector((state) => state.owner);
@@ -65,6 +78,59 @@ const OwnerDashboard = () => {
                 {myShopData.address}
               </p>
             </div>
+          </div>
+
+          {/* Location Management Section */}
+          <div className="w-full max-w-2xl bg-white rounded-3xl p-6 shadow-sm border border-gray-100 flex flex-col gap-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+                <IoMdPin className="text-[#ff4d2d]" size={22} />
+                Store Location
+              </h3>
+              <button 
+                onClick={() => navigate('/create-edit-shop')}
+                className="text-xs font-bold text-[#ff4d2d] hover:underline"
+              >
+                Change Address
+              </button>
+            </div>
+
+            {myShopData.location?.coordinates ? (
+              <div className="space-y-4">
+                <div className="h-40 w-full rounded-2xl overflow-hidden border border-gray-100 grayscale hover:grayscale-0 transition-all duration-500">
+                    <MapContainer 
+                        center={[myShopData.location.coordinates[1], myShopData.location.coordinates[0]]} 
+                        zoom={15} 
+                        style={{ height: '100%', width: '100%' }}
+                        scrollWheelZoom={false}
+                        dragging={false}
+                        zoomControl={false}
+                    >
+                        <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                        <Marker position={[myShopData.location.coordinates[1], myShopData.location.coordinates[0]]} icon={customIcon} />
+                    </MapContainer>
+                </div>
+                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest text-center">
+                    Location is set and visible to delivery partners
+                </p>
+              </div>
+            ) : (
+                <div className="bg-orange-50 border border-orange-100 rounded-2xl p-6 flex flex-col items-center text-center gap-3">
+                    <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center text-[#ff4d2d] shadow-sm">
+                        <IoMdPin size={24} className="animate-bounce" />
+                    </div>
+                    <div>
+                        <h4 className="font-bold text-gray-800">Pin your location</h4>
+                        <p className="text-xs text-gray-500 mt-1">Delivery boys cannot find your shop unless you set your exact location on the map.</p>
+                    </div>
+                    <button 
+                        onClick={() => navigate('/create-edit-shop')}
+                        className="mt-2 px-6 py-2 bg-[#ff4d2d] text-white text-xs font-black uppercase tracking-widest rounded-full shadow-md hover:shadow-lg transition-all active:scale-95 cursor-pointer"
+                    >
+                        Set Exact Location
+                    </button>
+                </div>
+            )}
           </div>
           {/* menu items */}
           {myShopData.items.length === 0 && (

@@ -15,7 +15,7 @@ export const addItem = async (req, res) => {
         }
         const item = await Item.create({ name, category, price, foodType, image, shop: shop._id })
 
-        shop = await Shop.findByIdAndUpdate(shop._id, { $push: { items: item._id } }, { new: true }).populate("items owner")
+        shop = await Shop.findByIdAndUpdate(shop._id, { $push: { items: item._id } }, { returnDocument: 'after' }).populate("items owner")
         await shop.save()
         await shop.populate([
             { path: "owner" },
@@ -34,7 +34,7 @@ export const editItem = async (req, res) => {
         if (req.file) {
             image = await uploadOnCloudinary(req.file.path)
         }
-        const item = await Item.findByIdAndUpdate(req.params.itemId, { name, category, price, foodType, image }, { new: true })
+        const item = await Item.findByIdAndUpdate(req.params.itemId, { name, category, price, foodType, image }, { returnDocument: 'after' })
         if (!item) {
             return res.status(404).json({ message: "Item not found" })
         }

@@ -44,7 +44,24 @@ const shopOrderSchema = new mongoose.Schema({
     totalAmount: {
         type: Number,
         required: true
+    },
+    status: {
+        type: String,
+        enum: ["pending", "preparing", "out of delivery", "delivered"],
+        default: "pending"
+    },
+
+    assignedTo:{
+        type:mongoose.Schema.Types.ObjectId,
+        ref:"DeliveryAssignment",
+        default:null
+    },
+    assignedDeliveryBoy:{
+        type:mongoose.Schema.Types.ObjectId,
+        ref:"User",
+        default:null
     }
+ 
 }, { timestamps: true })
 
 const orderSchema = new mongoose.Schema({
@@ -78,6 +95,14 @@ const orderSchema = new mongoose.Schema({
     totalAmount: {
         type: Number,
         required: true
+    },
+    razorpayOrderId: {
+        type: String,
+        default: ""
+    },
+    razorpayPaymentId: {
+        type: String,
+        default: ""
     },
     shopOrder: [shopOrderSchema]
 

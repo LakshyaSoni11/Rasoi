@@ -5,12 +5,22 @@ import { FaShoppingCart, FaPlus } from "react-icons/fa";
 import { useDispatch, useSelector } from "react-redux";
 import axios from "axios";
 import { serverUrl } from "../App";
-import { setUserData } from "../redux/userSlice";
+import { setUserData, setSearchQuery } from "../redux/userSlice";
 import { useNavigate } from "react-router-dom";
 
 const Nav = () => {
   const navigate = useNavigate();
-  const { userData, currentCity, cartItems } = useSelector(
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  React.useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 10);
+    };
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  const { userData, currentCity, cartItems, myOrders } = useSelector(
     (state) => state.user,
   );
   const { myShopData } = useSelector((state) => state.owner);
@@ -26,13 +36,16 @@ const Nav = () => {
         withCredentials: true,
       });
       dispatch(setUserData(null));
+      window.location.href = "/"; // Force full reload to clear all state
     } catch (error) {
       console.log(error);
     }
   };
 
   return (
-    <div className="w-full h-[64px] flex items-center justify-center px-4 fixed top-0 z-50 bg-[#fff9f6] shadow-sm">
+    <div className={`w-full h-[64px] flex items-center justify-center px-4 fixed top-0 z-50 transition-all duration-300 ${
+      isScrolled ? "bg-white/80 backdrop-blur-md shadow-md border-b border-gray-100" : "bg-[#fff9f6]"
+    }`}>
       {/* Inner Container (Centered Layout) */}
       <div className="w-full max-w-[1300px] flex items-center justify-between">
         {/* Logo */}
@@ -66,6 +79,7 @@ const Nav = () => {
                 type="text"
                 placeholder="Search for food, restaurants..."
                 className="w-full outline-none text-xs bg-transparent"
+                onChange={(e) => dispatch(setSearchQuery(e.target.value))}
               />
             </div>
           </div>
@@ -96,7 +110,7 @@ const Nav = () => {
                   Orders
                 </span>
                 <span className="absolute -top-1 -right-1 bg-[#ff4d2d] text-white text-[9px] font-bold w-4 h-4 flex items-center justify-center rounded-full">
-                  {/* TODO: Count orders dynamically */}0
+                  {userData?.role === "owner" ? (myOrders?.length || 0) : (cartItems?.length || 0)}
                 </span>
               </div>
             </div>
@@ -148,18 +162,32 @@ const Nav = () => {
             </div>
 
             {showDropdown && (
-              <div className="absolute top-[45px] right-0 w-[180px] bg-white shadow-xl rounded-xl p-3 flex flex-col gap-2 border animate-in fade-in slide-in-from-top-4 duration-200 z-50">
-                <div className="font-bold truncate text-sm">
-                  {userData?.fullName}
-                  <div className="text-[10px] text-gray-500 capitalize">
+              <div className="absolute top-[45px] right-0 w-[200px] bg-white shadow-2xl rounded-2xl p-2 flex flex-col border border-gray-100 animate-in fade-in slide-in-from-top-4 duration-200 z-50 overflow-hidden">
+                <div className="px-4 py-3 border-b border-gray-50 mb-1">
+                  <div className="font-bold truncate text-sm text-gray-800">
+                    {userData?.fullName}
+                  </div>
+                  <div className="text-[10px] text-[#ff4d2d] font-black uppercase tracking-widest mt-0.5">
                     {userData?.role}
                   </div>
                 </div>
 
                 <div
-                  className="text-red-500 text-sm font-medium cursor-pointer hover:bg-red-50 p-2 rounded-lg transition"
+                  className="flex items-center gap-3 text-gray-700 text-sm font-semibold cursor-pointer hover:bg-orange-50 hover:text-[#ff4d2d] px-4 py-2.5 rounded-xl transition-all"
+                  onClick={() => {
+                    navigate("/my-orders");
+                    setShowDropdown(false);
+                  }}
+                >
+                  <IoReceiptSharp size={18} />
+                  My Orders
+                </div>
+
+                <div
+                  className="flex items-center gap-3 text-red-500 text-sm font-semibold cursor-pointer hover:bg-red-50 px-4 py-2.5 rounded-xl transition-all mt-1"
                   onClick={handleLogout}
                 >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
                   Log Out
                 </div>
               </div>
@@ -177,6 +205,7 @@ const Nav = () => {
             placeholder="Search for food..."
             className="w-full outline-none text-sm"
             autoFocus
+            onChange={(e) => dispatch(setSearchQuery(e.target.value))}
           />
           <IoIosClose
             className="text-gray-400"

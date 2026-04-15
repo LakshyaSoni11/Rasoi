@@ -3,6 +3,8 @@ import { useSelector, useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
+import "leaflet/dist/leaflet.css";
+
 import { setLocation } from "../redux/mapSlice";
 import { clearCart } from "../redux/userSlice";
 import {
@@ -33,12 +35,23 @@ const customIcon = new L.Icon({
 function ChangeView({ center, zoom }) {
   const map = useMap();
   useEffect(() => {
-    map.setView(center, zoom);
-  }, [center, map, zoom]);
+    if (center && center[0] && center[1]) {
+      const timeoutId = setTimeout(() => {
+        if (map && !map._animating) {
+          map.flyTo(center, zoom, {
+            duration: 1.5,
+            noMoveStart: true
+          });
+        }
+      }, 100);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [center, zoom, map]);
   return null;
 }
 
 const CheckOut = () => {
+  const {userData} = useSelector((state) => state.user);
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { cartItems } = useSelector((state) => state.user);
@@ -164,11 +177,79 @@ const CheckOut = () => {
 
   const handlePlaceOrder = async () => {
     try {
+      if (!flatNo || !street) {
+        alert("Please fill your address details");
+        return;
+      }
+
       setIsPlacingOrder(true);
+
+      if (paymentMethod === "online") {
+        // 1. Create Razorpay order on backend
+        const orderRes = await axios.post(
+          `${serverUrl}/api/payment/create-order`,
+          { amount: grandTotal },
+          { withCredentials: true }
+        );
+
+        const { id: order_id, currency, amount } = orderRes.data;
+
+        // 2. Configure Razorpay options
+        const options = {
+          key: import.meta.env.VITE_RAZORPAY_KEY_ID || "", // Credentials left empty as requested
+          amount: amount,
+          currency: currency,
+          name: "Rasoi Delivery",
+          description: "Food Order Payment",
+          order_id: order_id,
+          handler: async (response) => {
+            try {
+              // 3. Verify payment on backend
+              const verifyRes = await axios.post(
+                `${serverUrl}/api/payment/verify-payment`,
+                response,
+                { withCredentials: true }
+              );
+
+              if (verifyRes.data.success) {
+                // 4. If verified, place the final order in our DB
+                await finalizeOrder("online", order_id, response.razorpay_payment_id);
+              }
+            } catch (err) {
+              console.error("Payment verification failed", err);
+              alert("Payment verification failed. Please contact support.");
+            }
+          },
+          prefill: {
+            name: userData?.fullName || "",
+            email: userData?.email || "",
+            contact: userData?.mobile || "",
+          },
+          theme: { color: "#ff4d2d" },
+        };
+
+        const rzp = new window.Razorpay(options);
+        rzp.open();
+        setIsPlacingOrder(false);
+      } else {
+        // Cash on Delivery
+        await finalizeOrder("cod");
+      }
+    } catch (error) {
+      console.error("Order error", error);
+      alert("Something went wrong while placing your order.");
+      setIsPlacingOrder(false);
+    }
+  };
+
+  const finalizeOrder = async (method, razorpayOrderId = "", razorpayPaymentId = "") => {
+    try {
       const result = await axios.post(
         `${serverUrl}/api/order/place-order`,
         {
-          paymentMethod,
+          paymentMethod: method,
+          razorpayOrderId,
+          razorpayPaymentId,
           deliveryAddress: {
             street,
             flatNo,
@@ -178,17 +259,15 @@ const CheckOut = () => {
           cartItems,
           totalAmount: grandTotal,
         },
-        {
-          withCredentials: true,
-        },
+        { withCredentials: true }
       );
-      console.log("place order", result.data);
+
       if (result.status === 201) {
-        dispatch(clearCart());
         navigate("/order-placed");
       }
     } catch (error) {
-      console.log(error);
+      console.error("Finalize Order error", error);
+      alert("Failed to save order. If money was deducted, please contact support.");
     } finally {
       setIsPlacingOrder(false);
     }

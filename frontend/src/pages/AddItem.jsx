@@ -6,6 +6,7 @@ import { IoMdArrowRoundBack } from "react-icons/io";
 import { serverUrl } from "../App";
 import axios from "axios";
 import { setMyShopData } from "../redux/ownerSlice";
+import { triggerRefresh } from "../redux/userSlice";
 import FoodLoader from "../components/FoodLoader";
 
 const AddItem = () => {
@@ -64,6 +65,7 @@ const AddItem = () => {
       );
       if (result.data.shop) {
         dispatch(setMyShopData(result.data.shop));
+        dispatch(triggerRefresh());
         setIsLoading(false);
         navigate(-1);
         console.log(result.data.shop);

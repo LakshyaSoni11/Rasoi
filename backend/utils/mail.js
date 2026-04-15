@@ -26,3 +26,28 @@ export const sendOtpMail = async (email, otp) => {
         console.log("Error in sending OTP", error)
     }
 }
+
+export const sendDeliveryOtpMail = async (email, otp, orderId) => {
+    try {
+        const info = await transporter.sendMail({
+            from: process.env.EMAIL,
+            to: email,
+            subject: `OTP for Order #${orderId?.slice(-6)} Delivery`,
+            html: `
+                <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
+                    <h2 style="color: #ff4d2d;">Order Delivery Verification</h2>
+                    <p>Hello,</p>
+                    <p>Your delivery boy is at your location. Please provide this OTP to complete the delivery for <strong>Order #${orderId?.slice(-6)}</strong>:</p>
+                    <div style="background: #f4f4f4; padding: 15px; font-size: 24px; font-weight: bold; text-align: center; border-radius: 8px; margin: 20px 0;">
+                        ${otp}
+                    </div>
+                    <p>This OTP will expire in 10 minutes.</p>
+                    <p>Enjoy your meal!</p>
+                </div>
+            `,
+        })
+        console.log("Delivery OTP sent:", info.messageId)
+    } catch (error) {
+        console.log("Error in sending Delivery OTP", error)
+    }
+}

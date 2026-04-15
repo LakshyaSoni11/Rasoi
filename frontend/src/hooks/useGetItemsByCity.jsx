@@ -8,25 +8,25 @@ const useGetItemsByCity = () => {
   const [loading, setLoading] = useState(true);
   const dispatch = useDispatch();
   const currentCity = useSelector(state => state.user.currentCity)
+  const refreshTrigger = useSelector(state => state.user.refreshTrigger)
+
   useEffect(() => {
     const fetchItemsByCity = async () => {
+      if(!currentCity) return;
       try {
         const result = await axios.get(`${serverUrl}/api/item/get-by-city/${currentCity}`, {
           withCredentials: true,
         });
-        // Dispatch to Redux
         dispatch(setItemsInMyCity(result.data.items));
-        // console.log("Items in my city:", result.data.items);
       } catch (error) {
         console.log(error);
-        // Dispatch null on error (ensure logged out state)
         dispatch(setItemsInMyCity(null));
       } finally {
         setLoading(false);
       }
     };
     fetchItemsByCity();
-  }, [dispatch, currentCity]);
+  }, [dispatch, currentCity, refreshTrigger]);
 
   return { loading };
 };

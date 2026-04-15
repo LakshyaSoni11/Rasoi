@@ -2,15 +2,38 @@ import React from "react";
 import { IoMdArrowRoundBack } from "react-icons/io";
 import { useSelector, useDispatch } from "react-redux";
 import { setMyShopData } from "../redux/ownerSlice";
+import { triggerRefresh } from "../redux/userSlice";
 import { useNavigate } from "react-router-dom";
 import { GiForkKnifeSpoon } from "react-icons/gi";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { serverUrl } from "../App";
+import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
 import axios from "axios";
+
+// Fix for default Leaflet icon inclusion in React
+const customIcon = new L.Icon({
+  iconUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png",
+  iconRetinaUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png",
+  shadowUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png",
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+});
+
+const LocationPicker = ({ position, setPosition }) => {
+  useMapEvents({
+    click(e) {
+      setPosition([e.latlng.lat, e.latlng.lng]);
+    },
+  });
+  return position ? <Marker position={position} icon={customIcon} /> : null;
+};
+
 const CreateEditShop = () => {
   const navigate = useNavigate();
   const { myShopData } = useSelector((state) => state.owner);
-  const { currentCity, currentState, currentAddress } = useSelector(
+  const { currentCity, currentState, currentAddress, userData } = useSelector(
     (state) => state.user,
   );
   const [name, setName] = useState(myShopData?.name || "");
@@ -19,6 +42,11 @@ const CreateEditShop = () => {
   const [City, setCity] = useState(myShopData?.city || currentCity);
   const [State, setState] = useState(myShopData?.state || currentState);
   const [address, setAddress] = useState(myShopData?.address || currentAddress);
+  const [location, setLocation] = useState(
+    myShopData?.location?.coordinates
+      ? [myShopData.location.coordinates[1], myShopData.location.coordinates[0]]
+      : [userData?.location?.coordinates?.[1] || 12.9716, userData?.location?.coordinates?.[0] || 77.5946]
+  );
   const dispatch = useDispatch();
 
   const handleImageChange = (e) => {
@@ -34,10 +62,16 @@ const CreateEditShop = () => {
     try {
       const formData = new FormData();
       formData.append("name", name);
-      formData.append("image", backendImage);
       formData.append("city", City);
       formData.append("state", State);
       formData.append("address", address);
+      if (location) {
+        formData.append("latitude", location[0]);
+        formData.append("longitude", location[1]);
+      }
+      if (backendImage) {
+        formData.append("image", backendImage);
+      }
       const result = await axios.post(
         `${serverUrl}/api/shop/create-edit`,
         formData,
@@ -46,6 +80,7 @@ const CreateEditShop = () => {
       console.log(result.data);
       if (result.data?.shop) {
         dispatch(setMyShopData(result.data.shop));
+        dispatch(triggerRefresh());
         navigate(-1);
       }
     } catch (error) {
@@ -143,6 +178,21 @@ const CreateEditShop = () => {
               value={address}
               onChange={(e) => setAddress(e.target.value)}
             />
+          </div>
+
+          <div className="space-y-2">
+            <label className="block text-[10px] font-black uppercase tracking-widest text-gray-500">
+              Pin Shop Location (Click on Map)
+            </label>
+            <div className="h-48 w-full rounded-xl overflow-hidden border border-gray-200 shadow-inner">
+              <MapContainer center={location} zoom={13} style={{ height: '100%', width: '100%' }}>
+                <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                <LocationPicker position={location} setPosition={setLocation} />
+              </MapContainer>
+            </div>
+            <p className="text-[9px] text-gray-400 font-bold italic">
+                * Note: This location is used to broadcast orders to nearby delivery partners.
+            </p>
           </div>
           <button className="w-full bg-[#ff4d2d] text-white px-5 py-2 rounded-full font-medium shadow-md hover:bg-orange-600 transition-colors duration-200 active:scale-95 cursor-pointer text-sm">
             {myShopData ? "Save Changes" : "Add Shop"}

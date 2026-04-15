@@ -8,6 +8,7 @@ import cors from "cors"
 import shopRouter from "./routes/shop.routes.js";
 import itemRouter from "./routes/item.routes.js";
 import orderRouter from "./routes/order.routes.js";
+import paymentRouter from "./routes/payment.routes.js";
 
 dotenv.config();
 const app = express();
@@ -22,6 +23,7 @@ app.use("/api/user", userRouter)
 app.use("/api/shop", shopRouter)
 app.use("/api/item", itemRouter)
 app.use("/api/order", orderRouter)
+app.use("/api/payment", paymentRouter)
 
 const port = process.env.PORT || 5000;
 
