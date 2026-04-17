@@ -8,6 +8,7 @@ import axios from "axios";
 import { setMyShopData } from "../redux/ownerSlice";
 import { triggerRefresh } from "../redux/userSlice";
 import FoodLoader from "../components/FoodLoader";
+import toast from "react-hot-toast";
 
 const AddItem = () => {
   const navigate = useNavigate();
@@ -19,6 +20,8 @@ const AddItem = () => {
   const [backendImage, setBackendImage] = useState(null);
   const [category, setCategory] = useState("");
   const [foodType, setFoodType] = useState("Veg");
+  const [isBestSeller, setIsBestSeller] = useState(false);
+  const [discountPrice, setDiscountPrice] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
   const categories = [
@@ -58,6 +61,8 @@ const AddItem = () => {
       formData.append("price", price);
       formData.append("category", category);
       formData.append("foodType", foodType);
+      formData.append("isBestSeller", isBestSeller);
+      formData.append("discountPrice", discountPrice || 0);
       const result = await axios.post(
         `${serverUrl}/api/item/add-item`,
         formData,
@@ -68,11 +73,11 @@ const AddItem = () => {
         dispatch(triggerRefresh());
         setIsLoading(false);
         navigate(-1);
-        console.log(result.data.shop);
       }
+    // eslint-disable-next-line no-unused-vars
     } catch (error) {
+      toast.error("Failed to add item. Please try again.");
       setIsLoading(false);
-      console.log(error);
     }
   };
 
@@ -136,7 +141,7 @@ const AddItem = () => {
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-1">
-              Price
+              Original Price (₹)
             </label>
             <input
               type="number"
@@ -144,6 +149,18 @@ const AddItem = () => {
               className="w-full px-3 py-1.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-sm"
               value={price}
               onChange={(e) => setPrice(e.target.value)}
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">
+              Discounted Price (₹) (Optional)
+            </label>
+            <input
+              type="number"
+              placeholder="Leave 0 if no discount"
+              className="w-full px-3 py-1.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-sm"
+              value={discountPrice}
+              onChange={(e) => setDiscountPrice(e.target.value)}
             />
           </div>
           <div>
@@ -178,6 +195,19 @@ const AddItem = () => {
                 </option>
               ))}
             </select>
+          </div>
+          <div className="flex items-center gap-3 bg-gray-50 p-3 rounded-lg border border-gray-100">
+            <input
+              type="checkbox"
+              id="bestSellerToggle"
+              className="w-4 h-4 text-[#ff4d2d] focus:ring-[#ff4d2d] border-gray-300 rounded cursor-pointer"
+              checked={isBestSeller}
+              onChange={(e) => setIsBestSeller(e.target.checked)}
+            />
+            <label htmlFor="bestSellerToggle" className="text-sm font-semibold text-gray-800 cursor-pointer flex-1">
+              Mark as Best Seller
+            </label>
+            <span className="text-[10px] bg-orange-100 text-[#ff4d2d] px-2 py-0.5 rounded-full font-bold">Recommended</span>
           </div>
 
           <div></div>

@@ -9,6 +9,7 @@ import { MapContainer, TileLayer, Marker } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import OwnerItemCard from "./OwnerItemCard";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 // Fix for default Leaflet icon inclusion in React
 const customIcon = new L.Icon({
@@ -157,6 +158,46 @@ const OwnerDashboard = () => {
               {myShopData.items.map((item) => (
                 <OwnerItemCard key={item._id} data={item} />
               ))}
+            </div>
+          )}
+
+          {/* New Analytics Section */}
+          {myShopData.items.length > 0 && (
+            <div className="w-full max-w-3xl mt-8 mb-12">
+               <h3 className="text-xl font-black text-gray-800 mb-6 flex items-center gap-2">
+                 Menu Analytics
+               </h3>
+               <div className="grid md:grid-cols-2 gap-6">
+                 <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
+                    <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Item Popularity (Reviews)</h4>
+                    <div className="h-64">
+                       <ResponsiveContainer width="100%" height="100%">
+                         <BarChart data={myShopData.items}>
+                           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eee" />
+                           <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#9ca3af', fontSize: 10}} width={1} />
+                           <YAxis axisLine={false} tickLine={false} tick={{fill: '#9ca3af', fontSize: 10}} />
+                           <Tooltip cursor={{fill: '#f9fafb'}} contentStyle={{borderRadius: '12px'}} />
+                           <Bar dataKey="reviews" fill="#ff4d2d" radius={[4, 4, 0, 0]} />
+                         </BarChart>
+                       </ResponsiveContainer>
+                    </div>
+                 </div>
+
+                 <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
+                    <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Average Ratings</h4>
+                    <div className="h-64">
+                       <ResponsiveContainer width="100%" height="100%">
+                         <BarChart data={myShopData.items}>
+                           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eee" />
+                           <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#9ca3af', fontSize: 10}} width={1} />
+                           <YAxis axisLine={false} tickLine={false} tick={{fill: '#9ca3af', fontSize: 10}} domain={[0, 5]} />
+                           <Tooltip cursor={{fill: '#f9fafb'}} contentStyle={{borderRadius: '12px'}} />
+                           <Bar dataKey="rating.average" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+                         </BarChart>
+                       </ResponsiveContainer>
+                    </div>
+                 </div>
+               </div>
             </div>
           )}
         </div>

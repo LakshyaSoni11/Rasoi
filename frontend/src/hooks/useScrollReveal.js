@@ -2,7 +2,6 @@ import { useEffect, useRef } from 'react';
 
 const useScrollReveal = () => {
     const revealRefs = useRef([]);
-    revealRefs.current = [];
 
     const addToRefs = (el) => {
         if (el && !revealRefs.current.includes(el)) {

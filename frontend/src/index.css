@@ -6,6 +6,11 @@
   --font-sans: "Outfit", sans-serif;
 }
 
+body, html, #root {
+  overflow-x: hidden;
+  width: 100%;
+}
+
 @keyframes revealUp {
   from {
     opacity: 0;

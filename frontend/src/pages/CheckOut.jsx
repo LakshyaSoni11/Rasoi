@@ -1,12 +1,7 @@
-import React, { useState, useRef, useMemo, useEffect } from "react";
-import { useSelector, useDispatch } from "react-redux";
-import { useNavigate } from "react-router-dom";
+import React, { useEffect } from "react";
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-
-import { setLocation } from "../redux/mapSlice";
-import { clearCart } from "../redux/userSlice";
 import {
   FaMapMarkerAlt,
   FaLocationArrow,
@@ -14,10 +9,8 @@ import {
   FaMoneyBillWave,
   FaCreditCard,
 } from "react-icons/fa";
-
-import axios from "axios";
-import { serverUrl } from "../App";
 import FoodLoader from "../components/FoodLoader";
+import useCheckout from "../hooks/useCheckout";
 
 // Custom Map Pin that overrides the broken default leaflet pin icon in React
 const customIcon = new L.Icon({
@@ -51,227 +44,26 @@ function ChangeView({ center, zoom }) {
 }
 
 const CheckOut = () => {
-  const {userData} = useSelector((state) => state.user);
-  const navigate = useNavigate();
-  const dispatch = useDispatch();
-  const { cartItems } = useSelector((state) => state.user);
-  const { location, address } = useSelector((state) => state.map);
-
-  // Form State
-  const [flatNo, setFlatNo] = useState("");
-  const [street, setStreet] = useState(address || "");
-  const [paymentMethod, setPaymentMethod] = useState("online");
-
-  // Search State
-  const [searchQuery, setSearchQuery] = useState("");
-  const [isSearching, setIsSearching] = useState(false);
-
-  // Map & Location State
-  const initialLat = location?.lat || 28.7041;
-  const initialLng = location?.lon || 77.1025;
-  const [position, setPosition] = useState({
-    lat: initialLat,
-    lng: initialLng,
-  });
-  const [loadingLocation, setLoadingLocation] = useState(false);
-  const markerRef = useRef(null);
-
-  // Calculate totals
-  const calculateSubtotal = () => {
-    return cartItems.reduce(
-      (total, item) => total + item.price * item.quantity,
-      0,
-    );
-  };
-  const deliveryFee = cartItems.length > 0 ? 40 : 0;
-  const taxes = calculateSubtotal() * 0.05;
-  const grandTotal = calculateSubtotal() + deliveryFee + taxes;
-
-  // If cart empty, kick out
-  useEffect(() => {
-    if (cartItems.length === 0) {
-      navigate("/cart");
-    }
-  }, [cartItems, navigate]);
-
-  // Reverse Geocode helper
-  const reverseGeocode = async (lat, lng) => {
-    try {
-      const response = await axios.get(
-        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`,
-      );
-      //   console.log(response.data.display_name)
-      if (response.data && response.data.display_name) {
-        setStreet(response.data.display_name);
-      }
-    } catch (error) {
-      console.error("Reverse geocoding failed", error);
-    }
-  };
-
-  // Handle Dragging Map Pin
-  const eventHandlers = useMemo(
-    () => ({
-      dragend() {
-        const marker = markerRef.current;
-        if (marker != null) {
-          const newPos = marker.getLatLng();
-          setPosition({ lat: newPos.lat, lng: newPos.lng });
-          dispatch(setLocation({ lat: newPos.lat, lon: newPos.lng }));
-          reverseGeocode(newPos.lat, newPos.lng);
-        }
-      },
-    }),
-    [dispatch],
-  );
-
-  // Forward Geocode helper (Search)
-  const handleSearch = async (e) => {
-    e.preventDefault();
-    if (!searchQuery.trim()) return;
-
-    setIsSearching(true);
-    try {
-      const response = await axios.get(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&limit=1`,
-      );
-      if (response.data && response.data.length > 0) {
-        const bestMatch = response.data[0];
-        const newLat = parseFloat(bestMatch.lat);
-        const newLng = parseFloat(bestMatch.lon);
-        setPosition({ lat: newLat, lng: newLng });
-        dispatch(setLocation({ lat: newLat, lon: newLng }));
-        setStreet(bestMatch.display_name);
-      } else {
-        alert("Location not found. Try a different search term.");
-      }
-    } catch (error) {
-      console.error("Geocoding search failed", error);
-      alert("Error searching for location.");
-    } finally {
-      setIsSearching(false);
-    }
-  };
-
-  // Auto-Locate via Browser GPS
-  const handleLocateMe = () => {
-    setLoadingLocation(true);
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const newLat = pos.coords.latitude;
-        const newLng = pos.coords.longitude;
-        setPosition({ lat: newLat, lng: newLng });
-        dispatch(setLocation({ lat: newLat, lon: newLng }));
-        reverseGeocode(newLat, newLng);
-        setLoadingLocation(false);
-      },
-      (err) => {
-        console.error(err);
-        alert("Please enable location permissions in your browser.");
-        setLoadingLocation(false);
-      },
-    );
-  };
-
-  const [isPlacingOrder, setIsPlacingOrder] = useState(false);
-
-  const handlePlaceOrder = async () => {
-    try {
-      if (!flatNo || !street) {
-        alert("Please fill your address details");
-        return;
-      }
-
-      setIsPlacingOrder(true);
-
-      if (paymentMethod === "online") {
-        // 1. Create Razorpay order on backend
-        const orderRes = await axios.post(
-          `${serverUrl}/api/payment/create-order`,
-          { amount: grandTotal },
-          { withCredentials: true }
-        );
-
-        const { id: order_id, currency, amount } = orderRes.data;
-
-        // 2. Configure Razorpay options
-        const options = {
-          key: import.meta.env.VITE_RAZORPAY_KEY_ID || "", // Credentials left empty as requested
-          amount: amount,
-          currency: currency,
-          name: "Rasoi Delivery",
-          description: "Food Order Payment",
-          order_id: order_id,
-          handler: async (response) => {
-            try {
-              // 3. Verify payment on backend
-              const verifyRes = await axios.post(
-                `${serverUrl}/api/payment/verify-payment`,
-                response,
-                { withCredentials: true }
-              );
-
-              if (verifyRes.data.success) {
-                // 4. If verified, place the final order in our DB
-                await finalizeOrder("online", order_id, response.razorpay_payment_id);
-              }
-            } catch (err) {
-              console.error("Payment verification failed", err);
-              alert("Payment verification failed. Please contact support.");
-            }
-          },
-          prefill: {
-            name: userData?.fullName || "",
-            email: userData?.email || "",
-            contact: userData?.mobile || "",
-          },
-          theme: { color: "#ff4d2d" },
-        };
-
-        const rzp = new window.Razorpay(options);
-        rzp.open();
-        setIsPlacingOrder(false);
-      } else {
-        // Cash on Delivery
-        await finalizeOrder("cod");
-      }
-    } catch (error) {
-      console.error("Order error", error);
-      alert("Something went wrong while placing your order.");
-      setIsPlacingOrder(false);
-    }
-  };
-
-  const finalizeOrder = async (method, razorpayOrderId = "", razorpayPaymentId = "") => {
-    try {
-      const result = await axios.post(
-        `${serverUrl}/api/order/place-order`,
-        {
-          paymentMethod: method,
-          razorpayOrderId,
-          razorpayPaymentId,
-          deliveryAddress: {
-            street,
-            flatNo,
-            latitude: location.lat,
-            longitude: location.lon,
-          },
-          cartItems,
-          totalAmount: grandTotal,
-        },
-        { withCredentials: true }
-      );
-
-      if (result.status === 201) {
-        navigate("/order-placed");
-      }
-    } catch (error) {
-      console.error("Finalize Order error", error);
-      alert("Failed to save order. If money was deducted, please contact support.");
-    } finally {
-      setIsPlacingOrder(false);
-    }
-  };
+  const {
+    flatNo, setFlatNo,
+    street, setStreet,
+    paymentMethod, setPaymentMethod,
+    searchQuery, setSearchQuery,
+    isSearching,
+    isPlacingOrder,
+    loadingLocation,
+    position,
+    markerRef,
+    cartItems,
+    calculateSubtotal,
+    deliveryFee,
+    taxes,
+    grandTotal,
+    handleSearch,
+    handleLocateMe,
+    handlePlaceOrder,
+    eventHandlers
+  } = useCheckout();
 
   return (
     <div className="min-h-screen bg-[#fff9f6] pt-24 pb-10 px-4 sm:px-6 lg:px-8 relative">

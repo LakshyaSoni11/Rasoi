@@ -5,7 +5,7 @@ import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { serverUrl } from "../App";
 import { useDispatch } from "react-redux";
-import { setUserData } from "../redux/userSlice";
+import { setUserData, triggerRefresh } from "../redux/userSlice";
 
 const SignIn = () => {
   const primarycolor = "#ff4d2d";
@@ -31,13 +31,12 @@ const SignIn = () => {
         { withCredentials: true },
       );
       dispatch(setUserData(res.data.user))
+      dispatch(triggerRefresh())
       if (res.status === 200) {
         alert(res.data.message);
         navigate("/");
-        // console.log(res.data.user);
       }
     } catch (error) {
-      console.log(error);
       alert(error.response?.data?.message || "Something went wrong");
     }
   };

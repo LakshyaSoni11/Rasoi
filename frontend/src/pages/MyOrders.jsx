@@ -7,6 +7,9 @@ import axios from "axios";
 import { serverUrl } from "../App";
 import { setMyOrders, triggerRefresh } from "../redux/userSlice";
 import { useState } from "react";
+import ItemRating from "../components/ItemRating";
+// eslint-disable-next-line no-unused-vars
+import { motion, AnimatePresence } from "framer-motion";
 
 const getStatusColor = (status) => {
   
@@ -60,8 +63,6 @@ const MyOrders = () => {
         dispatch(triggerRefresh()); 
         if (newStatus === "out of delivery") {
           setAvailableBoys(res.data.availableBoys || []);
-          console.log("Available Boys: ", res.data.availableBoys);
-          console.log("Broadcast Payload: ", res.data);
         }
       }
     } catch (error) {
@@ -96,7 +97,7 @@ const MyOrders = () => {
                 ? "You haven't received any orders yet."
                 : "You haven't placed any orders yet."}
             </p>
-            {userData?.role === "user" && (
+            {userData?.role !== "owner" && (
               <button
                 onClick={() => navigate("/")}
                 className="bg-[#ff4d2d] hover:bg-orange-600 text-white font-bold py-2.5 px-6 rounded-xl transition-colors shadow-sm"
@@ -106,7 +107,19 @@ const MyOrders = () => {
             )}
           </div>
         ) : (
-          <div className="flex flex-col gap-6">
+          <motion.div 
+            initial="hidden" 
+            animate="visible" 
+            variants={{
+              hidden: { opacity: 0 },
+              visible: {
+                opacity: 1,
+                transition: { staggerChildren: 0.1 }
+              }
+            }}
+            className="flex flex-col gap-6"
+          >
+            <AnimatePresence>
             {myOrders.map((order) => {
               const ownerSubtotal =
                 userData?.role === "owner"
@@ -118,8 +131,14 @@ const MyOrders = () => {
                   : 0;
 
               return (
-                <div
+                <motion.div
                   key={order._id}
+                  variants={{
+                    hidden: { opacity: 0, y: 20 },
+                    visible: { opacity: 1, y: 0 }
+                  }}
+                  whileHover={{ scale: 1.01 }}
+                  transition={{ type: "spring", stiffness: 300, damping: 24 }}
                   className="bg-white rounded-2xl p-5 sm:p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow"
                 >
                   {/* Order Header */}
@@ -171,7 +190,7 @@ const MyOrders = () => {
                           className="bg-gray-50 rounded-xl p-4 sm:p-5"
                         >
                           <div className="flex items-start sm:items-center justify-between mb-4 flex-col sm:flex-row gap-3">
-                            {userData?.role === "user" ? (
+                            {userData?.role !== "owner" ? (
                               <h3 className="font-bold text-gray-800 flex items-center gap-2 text-lg">
                                 <span className="w-2.5 h-2.5 rounded-full bg-[#ff4d2d]"></span>
                                 {shopOrd.shop?.name || "Restaurant"}
@@ -182,7 +201,7 @@ const MyOrders = () => {
                                 Order Details
                               </h3>
                             )}
-                            {userData?.role === "user" ? (
+                            {userData?.role !== "owner" ? (
                               <div className="flex items-center">
                                 <span
                                   className={`px-3 py-1 text-xs font-bold uppercase tracking-wider rounded-full ${getStatusColor(shopOrd.status)}`}
@@ -331,12 +350,19 @@ const MyOrders = () => {
                                     {itemObj.name}
                                   </span>
                                 </div>
-                                <span className="font-bold text-gray-800 shrink-0 ml-2">
-                                  ₹
-                                  {(itemObj.price * itemObj.quantity).toFixed(
-                                    2,
+                                <div className="flex items-center">
+                                  <span className="font-bold text-gray-800 shrink-0 ml-2">
+                                    ₹{(itemObj.price * itemObj.quantity).toFixed(2)}
+                                  </span>
+                                  {userData?.role !== "owner" && shopOrd.status === "delivered" && (
+                                    <ItemRating 
+                                      orderId={order._id} 
+                                      orderItemId={itemObj._id} 
+                                      itemId={itemObj.item?._id || itemObj.item} 
+                                      isRated={itemObj.isRated} 
+                                    />
                                   )}
-                                </span>
+                                </div>
                               </div>
                             ))}
                           </div>
@@ -355,10 +381,11 @@ const MyOrders = () => {
                         </div>
                       ))}
                   </div>
-                </div>
+                </motion.div>
               );
             })}
-          </div>
+            </AnimatePresence>
+          </motion.div>
         )}
       </div>
     </div>

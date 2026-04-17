@@ -17,6 +17,10 @@ const shopOrderItemSchema = new mongoose.Schema({
     quantity: {
         type: Number,
         required: true
+    },
+    isRated: {
+        type: Boolean,
+        default: false
     }
 }, { timestamps: true })
 

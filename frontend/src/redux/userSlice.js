@@ -12,7 +12,8 @@ const userSlice = createSlice({
         cartItems: [],
         myOrders:null,
         searchQuery: "",
-        refreshTrigger: 0
+        refreshTrigger: 0,
+        socket: null
     },
     reducers: {
         setUserData: (state, action) => {
@@ -41,7 +42,6 @@ const userSlice = createSlice({
             } else {
                 state.cartItems.push(cartItem)
             }
-            console.log("cartItems", current(state.cartItems))
         },
         removeFromCart: (state, action) => {
             state.cartItems = state.cartItems.filter((item) => item.id !== action.payload)
@@ -57,9 +57,12 @@ const userSlice = createSlice({
         },
         triggerRefresh: (state) => {
             state.refreshTrigger += 1
+        },
+        setSocket: (state, action) => {
+            state.socket = action.payload
         }
     }
 })
 
-export const { setUserData, setCurrentCity, setCurrentState, setCurrentAddress, setShopsInMyCity, setItemsInMyCity, addToCart, removeFromCart, clearCart, setMyOrders, setSearchQuery, triggerRefresh } = userSlice.actions;
+export const { setUserData, setCurrentCity, setCurrentState, setCurrentAddress, setShopsInMyCity, setItemsInMyCity, addToCart, removeFromCart, clearCart, setMyOrders, setSearchQuery, triggerRefresh, setSocket } = userSlice.actions;
 export default userSlice.reducer

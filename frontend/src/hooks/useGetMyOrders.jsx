@@ -1,13 +1,14 @@
 import axios from "axios";
 import { useState, useEffect } from "react";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { serverUrl } from "../App";
 import { setMyOrders } from "../redux/userSlice";
+
 
 const useGetMyOrders = () => {
   const [loading, setLoading] = useState(true);
   const dispatch = useDispatch();
-  const refreshTrigger = useSelector((state) => state.user.refreshTrigger);
+  const { userData, refreshTrigger } = useSelector((state) => state.user);
 
   useEffect(() => {
     const fetchOrders = async () => {
@@ -26,7 +27,7 @@ const useGetMyOrders = () => {
       }
     };
     fetchOrders();
-  }, [dispatch, refreshTrigger]);
+  }, [dispatch, refreshTrigger, userData?._id]);
 
   return { loading };
 };

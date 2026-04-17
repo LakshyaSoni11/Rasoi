@@ -6,6 +6,9 @@ import { serverUrl } from "../App";
 import axios from "axios";
 import { useDispatch } from "react-redux";
 import { setMyShopData } from "../redux/ownerSlice";
+// eslint-disable-next-line no-unused-vars
+import { motion } from "framer-motion";
+import toast from "react-hot-toast";
 
 const OwnerItemCard = ({ data }) => {
   const navigate = useNavigate();
@@ -18,13 +21,36 @@ const OwnerItemCard = ({ data }) => {
       );
     //   navigate(-1);
       dispatch(setMyShopData(res.data.shop));
+      toast.success("Item deleted successfully!");
     } catch (error) {
-      console.log(error);
+      toast.error(error.response?.data?.message || "Failed to delete item.");
+    }
+  };
+
+  const handleToggleAvailability = async () => {
+    try {
+      const res = await axios.put(
+        `${serverUrl}/api/item/toggle-availability/${data._id}`,
+        {},
+        { withCredentials: true }
+      );
+      if (res.status === 200) {
+        toast.success(res.data.message);
+        // We'll rely on the triggerRefresh or individual state update if needed, 
+        // but for now, we'll assume the shop data is refreshed overall.
+        // If myShopData is available in the parent, it will re-render.
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to toggle availability.");
     }
   };
 
   return (
-    <div className="flex bg-white shadow-sm hover:shadow-md transition-shadow duration-300 rounded-xl overflow-hidden border border-gray-100 w-full max-w-2xl">
+    <motion.div 
+      whileHover={{ y: -4, scale: 1.01 }}
+      transition={{ type: "spring", stiffness: 300, damping: 20 }}
+      className="flex bg-white shadow-sm hover:shadow-md transition-shadow duration-300 rounded-xl overflow-hidden border border-gray-100 w-full max-w-2xl"
+    >
       {/* Image Section */}
       <div className="w-32 sm:w-40 shrink-0 bg-gray-50 relative">
         <img
@@ -54,6 +80,20 @@ const OwnerItemCard = ({ data }) => {
           </span>
         </div>
 
+        {/* Availability Toggle */}
+        <div className="flex items-center gap-2 mb-3">
+          <button
+            onClick={handleToggleAvailability}
+            className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter transition-all cursor-pointer ${
+              data.isAvailable 
+                ? "bg-green-100 text-green-700 hover:bg-green-200" 
+                : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+            }`}
+          >
+            {data.isAvailable ? "● Available" : "○ Out of Stock"}
+          </button>
+        </div>
+
         {/* Actions */}
         <div className="mt-auto flex items-center justify-end gap-2 sm:gap-3">
           <button
@@ -72,7 +112,7 @@ const OwnerItemCard = ({ data }) => {
           </button>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 };
 

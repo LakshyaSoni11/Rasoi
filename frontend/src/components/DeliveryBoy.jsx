@@ -8,12 +8,14 @@ import { MdOutlineFastfood } from "react-icons/md";
 import "leaflet/dist/leaflet.css";
 import DeliveryBoyTracking from "./DeliveryBoyTracking";
 
+import toast from "react-hot-toast";
+
 const DeliveryBoy = () => {
   useUpdateLocation(); // Keep location updated
   const { userData } = useSelector((state) => state.user);
   const [assignments, setAssignments] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [processing, setProcessing] = useState(false);
+  const [processingId, setProcessingId] = useState(null);
   const [currentTask, setCurrentTask] = useState(null);
   const [showOtpBox, setShowOtpBox] = useState(false);
   const [otp, setOtp] = useState("");
@@ -23,7 +25,6 @@ const DeliveryBoy = () => {
     try {
       const res = await axios.get(`${serverUrl}/api/order/get-current-order`, { withCredentials: true });
       setCurrentTask(res.data);
-      console.log(res.data);
     } catch (error) {
       console.error("Failed to fetch current order", error);
       setCurrentTask(null);
@@ -40,53 +41,60 @@ const DeliveryBoy = () => {
     }
   };
 
+  const { refreshTrigger } = useSelector((state) => state.user);
+
   useEffect(() => {
     fetchAssignments();
     getCurrentOrder();
-    // Auto-poll for new broadcasts every 5 seconds
+    // Auto-poll for new broadcasts every 5 seconds (fallback)
     const interval = setInterval(fetchAssignments, 5000);
     return () => clearInterval(interval);
-  }, []);
+  }, [refreshTrigger]); // Refresh on global trigger
 
   const handleAccept = async (assignmentId) => {
-    if (processing) return;
+    if (processingId) return;
     try {
-      setProcessing(true);
+      setProcessingId(assignmentId);
       const res = await axios.post(`${serverUrl}/api/order/accept-order/${assignmentId}`, {}, { withCredentials: true });
-      alert(res.data.message);
+      toast.success(res.data.message);
       await fetchAssignments();
       await getCurrentOrder();
     } catch (error) {
       console.error("Accept error:", error);
-      alert(error.response?.data?.message || "This order might have already been accepted by another partner.");
+      toast.error(error.response?.data?.message || "This order might have already been accepted by another partner.");
       await fetchAssignments();
     } finally {
-      setProcessing(false);
+      setProcessingId(null);
     }
   };
 
   const handleSendOtp = async (assignmentId) => {
-    if (processing) return;
+    if (processingId) return;
     try {
-      setProcessing(true);
+      setProcessingId(assignmentId);
       const res = await axios.post(`${serverUrl}/api/order/send-otp/${assignmentId}`, {}, { withCredentials: true });
-      alert(res.data.message);
+      // For testing: we can log or toast the OTP if backend returns it
+      if (res.data.otp) {
+        toast.success(`OTP is: ${res.data.otp}`, { duration: 10000 });
+      } else {
+        toast.success(res.data.message);
+      }
       setSelectedAssignmentId(assignmentId);
       setShowOtpBox(true);
     } catch (error) {
       console.error("Send OTP error:", error);
-      alert(error.response?.data?.message || "Failed to send OTP");
+      toast.error(error.response?.data?.message || "Failed to send OTP");
     } finally {
-      setProcessing(false);
+      setProcessingId(null);
     }
   };
 
   const handleVerifyOtp = async () => {
-    if (processing || !otp) return;
+    if (processingId || !otp) return;
     try {
-      setProcessing(true);
+      setProcessingId(selectedAssignmentId);
       const res = await axios.post(`${serverUrl}/api/order/verify-otp/${selectedAssignmentId}`, { otp }, { withCredentials: true });
-      alert(res.data.message);
+      toast.success(res.data.message);
       setShowOtpBox(false);
       setOtp("");
       setSelectedAssignmentId(null);
@@ -94,28 +102,12 @@ const DeliveryBoy = () => {
       await getCurrentOrder();
     } catch (error) {
       console.error("Verify OTP error:", error);
-      alert(error.response?.data?.message || "Invalid OTP");
+      toast.error(error.response?.data?.message || "Invalid OTP");
     } finally {
-      setProcessing(false);
+      setProcessingId(null);
     }
   };
 
-  const handleComplete = async (assignmentId) => {
-    if (processing) return;
-    try {
-      setProcessing(true);
-      const res = await axios.post(`${serverUrl}/api/order/complete-delivery/${assignmentId}`, {}, { withCredentials: true });
-      alert(res.data.message);
-      await fetchAssignments();
-      await getCurrentOrder();
-    } catch (error) {
-      console.error("Complete error:", error);
-      alert(error.response?.data?.message || "Failed to complete delivery");
-      await fetchAssignments();
-    } finally {
-      setProcessing(false);
-    }
-  };
 
   const broadcasts = assignments.filter(a => a.status === "broadcasted");
   const activeAssignments = assignments.filter(a => a.status === "assigned");
@@ -170,7 +162,7 @@ const DeliveryBoy = () => {
                     onAction={() => handleSendOtp(assignment._id)}
                     actionLabel="Mark as Delivered"
                     variant="active"
-                    processing={processing}
+                    processing={processingId === assignment._id}
                   />
                 ))}
               </>
@@ -199,14 +191,14 @@ const DeliveryBoy = () => {
                 <div className="flex flex-col gap-3">
                   <button 
                     onClick={handleVerifyOtp}
-                    disabled={processing || otp.length !== 6}
+                    disabled={processingId === selectedAssignmentId || otp.length !== 6}
                     className="w-full py-5 bg-[#ff4d2d] text-white rounded-2xl font-black uppercase tracking-widest shadow-lg shadow-orange-200 hover:bg-orange-600 active:scale-[0.98] disabled:bg-gray-200 disabled:shadow-none transition-all"
                   >
-                    {processing ? "Verifying..." : "Confirm Delivery"}
+                    {processingId === selectedAssignmentId ? "Verifying..." : "Confirm Delivery"}
                   </button>
                   <button 
                     onClick={() => { setShowOtpBox(false); setOtp(""); }}
-                    disabled={processing}
+                    disabled={processingId === selectedAssignmentId}
                     className="w-full py-4 text-gray-400 font-black uppercase tracking-widest text-xs hover:text-gray-600 transition-all"
                   >
                     Cancel
@@ -239,7 +231,7 @@ const DeliveryBoy = () => {
                 onAction={() => handleAccept(assignment._id)}
                 actionLabel="Accept Assignment"
                 variant="broadcast"
-                processing={processing}
+                processing={processingId === assignment._id}
               />
             ))}
           </div>
@@ -250,10 +242,8 @@ const DeliveryBoy = () => {
 };
 
 const AssignmentCard = ({ assignment, onAction, actionLabel, variant, processing }) => {
-  console.log("assignment",assignment)
   const order = assignment.Order;
   const shop = assignment.shop;
-  console.log(shop)
   const isBroadcast = variant === "broadcast";
 
   // Finding the specific shop order items from the main order object

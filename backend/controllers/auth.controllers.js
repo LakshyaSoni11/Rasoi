@@ -34,7 +34,6 @@ export const signUp = async (req, res) => {
         })
         return res.status(201).json({ message: "User created successfully", user })
     } catch (error) {
-        console.log("Error in sign up", error)
         return res.status(500).json({ message: "Internal server error" })
     }
 }
@@ -61,7 +60,6 @@ export const signIn = async (req, res) => {
         })
         return res.status(200).json({ message: "User signed in successfully", user })
     } catch (error) {
-        console.log("Error in sign in", error)
         return res.status(500).json({ message: "Internal server error" })
     }
 }
@@ -71,7 +69,6 @@ export const signOut = async (req, res) => {
         res.clearCookie("token")
         return res.status(200).json({ message: "User signed out successfully" })
     } catch (error) {
-        console.log("Error in sign out", error)
         return res.status(500).json({ message: "Internal server error" })
     }
 }
@@ -94,7 +91,6 @@ export const sendOtp = async (req, res) => {
         sendOtpMail(email, otp)
         return res.status(200).json({ message: "Otp sent successfully" })
     } catch (error) {
-        console.log("Error in send otp", error)
         return res.status(500).json({ message: "Internal server error" })
     }
 }
@@ -121,7 +117,6 @@ export const verifyOtp = async (req, res) =>{
         await user.save()
         return res.status(200).json({message:"Otp verified successfully"})
     } catch (error) {
-        console.log("Error in verify otp", error)
         return res.status(500).json({message:"Internal server error"})
     }
 }
@@ -147,7 +142,6 @@ export const resetPassword = async (req, res) =>{
         await user.save()
         return res.status(200).json({message:"Password reset successfully"})
     } catch (error) {
-        console.log("Error in reset password", error)
         return res.status(500).json({message:"Internal server error"})
     }
 }

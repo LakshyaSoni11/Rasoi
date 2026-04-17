@@ -11,6 +11,7 @@ import { IoReceiptSharp } from "react-icons/io5";
 import FoodCard from "./FoodCard.jsx";
 import FoodLoader from "./FoodLoader";
 import useScrollReveal from "../hooks/useScrollReveal";
+import Fuse from "fuse.js";
 
 const UserDashboard = () => {
   const navigate = useNavigate();
@@ -54,7 +55,9 @@ const UserDashboard = () => {
       setUpdatedItemsList(filteredItems);
 
       if (shopsInMyCity?.shop) {
-        const shopIdsWithCategory = new Set(filteredItems.map(item => item.shop));
+        const shopIdsWithCategory = new Set(filteredItems.map(item => 
+          item.shop?._id || item.shop
+        ));
         const filteredShops = shopsInMyCity.shop.filter(shop => 
           shopIdsWithCategory.has(shop._id)
         );
@@ -104,21 +107,43 @@ const UserDashboard = () => {
         return;
     }
     
-    // Global search across items
-    const filteredItems = itemsInMyCity?.filter(item => 
-        item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.category.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-    setUpdatedItemsList(filteredItems);
+    // Fuzzy search across items
+    if (itemsInMyCity?.length > 0) {
+      const itemFuse = new Fuse(itemsInMyCity, {
+        keys: [
+          { name: "name", weight: 0.6 },
+          { name: "category", weight: 0.3 },
+          { name: "foodType", weight: 0.1 },
+        ],
+        threshold: 0.4,
+        distance: 100,
+        includeScore: true,
+      });
+      const itemResults = itemFuse.search(searchQuery);
+      setUpdatedItemsList(itemResults.map(r => r.item));
+    } else {
+      setUpdatedItemsList([]);
+    }
 
-    // Global search across shops
-    const filteredShops = shopsInMyCity?.shop?.filter(shop => 
-        shop.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-        shop.city.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-    setUpdatedShopsList(filteredShops);
+    // Fuzzy search across shops
+    if (shopsInMyCity?.shop?.length > 0) {
+      const shopFuse = new Fuse(shopsInMyCity.shop, {
+        keys: [
+          { name: "name", weight: 0.6 },
+          { name: "city", weight: 0.2 },
+          { name: "address", weight: 0.2 },
+        ],
+        threshold: 0.4,
+        distance: 100,
+        includeScore: true,
+      });
+      const shopResults = shopFuse.search(searchQuery);
+      setUpdatedShopsList(shopResults.map(r => r.item));
+    } else {
+      setUpdatedShopsList([]);
+    }
     
-    if (searchQuery) setActiveCategory('All'); // Reset category during search
+    if (searchQuery) setActiveCategory('All');
   }, [searchQuery, itemsInMyCity, shopsInMyCity]);
 
   const scroll = (direction) => {
@@ -142,7 +167,7 @@ const UserDashboard = () => {
   };
 
   return (
-    <div className="w-screen min-h-screen flex flex-col items-center bg-[#fff9f6] pb-10 overflow-x-hidden">
+    <div className="w-full min-h-screen flex flex-col items-center bg-[#fff9f6] pb-10 overflow-x-hidden">
       <Nav />
       {/* Container holding the content */}
       <div className="w-full flex flex-col items-center px-4 max-w-6xl mt-6">

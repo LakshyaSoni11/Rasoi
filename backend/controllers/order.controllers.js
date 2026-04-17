@@ -57,11 +57,19 @@ export const placeOrder = async (req, res) => {
             razorpayPaymentId,
             shopOrder: shopOrders
         })
+        const io = req.app.get("io")
+        if(io){
+            for(const shopOrder of newOrder.shopOrder){
+                io.to(`user_${shopOrder.owner}`).emit("newOrder", {
+                    message: "New order received",
+                    order: newOrder
+                });
+            }
+        }
         return res.status(201).json({ message: "Order placed successfully", order: newOrder })
 
 
     } catch (error) {
-        console.log(error)
         return res.status(500).json({ message: "place order failed" })
     }
 }
@@ -69,12 +77,13 @@ export const placeOrder = async (req, res) => {
 export const getMyOrders = async (req, res) =>{
     try {
         const user = await User.findById(req.userId)
-        if(user.role == "user"){
+        if(user.role == "user" || user.role == "admin"){
             const orders = await Order.find({user: req.userId})
             .sort({createdAt: -1})
             .populate("shopOrder.shop", "name")
             .populate("shopOrder.owner", "name email mobile")
             .populate("shopOrder.shopOrderItems.item", "name image price")
+            .populate("shopOrder.assignedDeliveryBoy", "fullName mobile email location")
         // .select("-deliveryAddress")
         return res.status(200).json({message: "Orders fetched successfully", orders})
         }
@@ -84,12 +93,12 @@ export const getMyOrders = async (req, res) =>{
             .populate("shopOrder.shop", "name")
             .populate("user")
             .populate("shopOrder.shopOrderItems.item", "name image price")
+            .populate("shopOrder.assignedDeliveryBoy", "fullName mobile email location")
             // .select("-deliveryAddress")
             return res.status(200).json({message: "Orders fetched successfully", orders});
         }
 
     } catch (error) {
-        console.log(error)
         return res.status(500).json({message: "Failed to fetch orders"})
     }
 }
@@ -109,22 +118,74 @@ export const updateOrderStatus = async (req, res) => {
         let deliveryBoysPayload = null;
         if(status == "out of delivery"){
             const {longitude, latitude} = order.deliveryAddress;
-            const nearbyDeliveryBoys = await User.find({
-                role: "deliveryBoy",
-                location:{
-                    $near:{
-                        $geometry:{
-                            type:"Point",
-                            coordinates: [Number(longitude), Number(latitude)]
-                        },
-                        $maxDistance: 10000
+            let nearbyDeliveryBoys = [];
+
+            console.log("[DeliverySearch] Customer coords:", { longitude, latitude });
+
+            // Try geospatial search first (10km), then wider (50km), then fallback to all verified
+            try {
+                nearbyDeliveryBoys = await User.find({
+                    role: "deliveryBoy",
+                    isVerified: true,
+                    location:{
+                        $near:{
+                            $geometry:{
+                                type:"Point",
+                                coordinates: [Number(longitude), Number(latitude)]
+                            },
+                            $maxDistance: 10000
+                        }
                     }
+                });
+                console.log("[DeliverySearch] 10km geo result:", nearbyDeliveryBoys.length);
+
+                // If no results within 10km, try 50km
+                if (nearbyDeliveryBoys.length === 0) {
+                    nearbyDeliveryBoys = await User.find({
+                        role: "deliveryBoy",
+                        isVerified: true,
+                        location:{
+                            $near:{
+                                $geometry:{
+                                    type:"Point",
+                                    coordinates: [Number(longitude), Number(latitude)]
+                                },
+                                $maxDistance: 50000
+                            }
+                        }
+                    });
+                    console.log("[DeliverySearch] 50km geo result:", nearbyDeliveryBoys.length);
                 }
-            })
+            } catch (geoError) {
+                console.log("[DeliverySearch] Geo query failed:", geoError.message);
+                // Fallback: find all verified delivery boys
+                nearbyDeliveryBoys = await User.find({
+                    role: "deliveryBoy",
+                    isVerified: true
+                });
+                console.log("[DeliverySearch] Fallback (all verified):", nearbyDeliveryBoys.length);
+            }
+
+            // Final fallback: if geo returned nothing, try without geo filter
+            if (nearbyDeliveryBoys.length === 0) {
+                nearbyDeliveryBoys = await User.find({
+                    role: "deliveryBoy",
+                    isVerified: true
+                });
+                console.log("[DeliverySearch] Final fallback (all verified):", nearbyDeliveryBoys.length);
+
+                // If STILL zero, check if any deliveryBoy users exist at all
+                if (nearbyDeliveryBoys.length === 0) {
+                    const allBoys = await User.find({ role: "deliveryBoy" });
+                    console.log("[DeliverySearch] Total deliveryBoy users (ignoring isVerified):", allBoys.length, allBoys.map(b => ({ name: b.fullName, verified: b.isVerified, coords: b.location?.coordinates })));
+                }
+            }
+
             const deliveryBoyIds = nearbyDeliveryBoys.map(boy => boy._id)
             const busyDeliveryBoysId = await DeliveryAssignment.find({ assignedTo: { $in: deliveryBoyIds }, status: { $nin: ["broadcasted", "delivered"] } }).distinct("assignedTo")
             const busyIdSet = new Set(busyDeliveryBoysId.map(id => String(id)))
             const availableDeliveryBoys = nearbyDeliveryBoys.filter(boy => !busyIdSet.has(String(boy._id)))
+            console.log("[DeliverySearch] After busy filter:", { found: nearbyDeliveryBoys.length, busy: busyDeliveryBoysId.length, available: availableDeliveryBoys.length });
             const candidates = availableDeliveryBoys.map(boy => boy._id)
             if(candidates.length == 0){
                 await order.save();
@@ -154,6 +215,17 @@ export const updateOrderStatus = async (req, res) => {
                 longitude: boy.location.coordinates[0],
                 latitude: boy.location.coordinates[1]
             }))
+
+            // SOCKET: Notify candidates about new broadcasted assignment via Rooms
+            const io = req.app.get("io");
+            if (io) {
+                availableDeliveryBoys.forEach(boy => {
+                    io.to(`user_${boy._id}`).emit("newAssignment", {
+                        message: "New delivery task available nearby!",
+                        assignmentId: deliveryAssignment._id
+                    });
+                });
+            }
         }
 
         await order.save();
@@ -162,6 +234,15 @@ export const updateOrderStatus = async (req, res) => {
         await order.populate("shopOrder.shopOrderItems.item", "name image price");
         await order.populate("shopOrder.assignedDeliveryBoy", "fullName mobile email location");
         const updatedShopOrder = order.shopOrder.find(s => s.shop?._id?.toString() === shopId || s.shop?.toString() === shopId)
+
+        // SOCKET: Notify User of Status change
+        const io = req.app.get("io");
+        if (io) {
+            io.to(`user_${order.user?._id || order.user}`).emit("orderUpdate", {
+                message: `Your order from ${updatedShopOrder.shop?.name} is now ${status}`,
+                orderId: order._id
+            });
+        }
 
         return res.status(200).json({ 
             message: "Status updated successfully",
@@ -172,7 +253,6 @@ export const updateOrderStatus = async (req, res) => {
             assignmentId: updatedShopOrder?.assignedTo?._id || updatedShopOrder?.assignedTo
         });
     } catch (error) {
-        console.log(error);
         return res.status(500).json({ message: "Failed to update status" });
     }
 }
@@ -234,6 +314,22 @@ export const acceptOrderAssignment = async (req, res) => {
                 await order.save();
                 await order.populate('shopOrder.assignedDeliveryBoy', 'fullName mobile email')
                 const updatedShopOrder = order.shopOrder.find(s => s._id.toString() === assignment.shopOrderId.toString());
+
+                // SOCKET: Notify User & Owner that Order was accepted by delivery boy
+                const io = req.app.get("io");
+                if (io) {
+                    const userId = order.user?._id || order.user;
+                    io.to(`user_${userId}`).emit("orderUpdate", {
+                        message: "A delivery partner has been assigned to your order",
+                        orderId: order._id
+                    });
+                    
+                    io.to(`user_${shopOrder.owner}`).emit("orderUpdate", {
+                        message: "Delivery partner assigned to your shop's order",
+                        orderId: order._id
+                    });
+                }
+
                 return res.status(200).json({ message: "Order accepted successfully", assignment, shopOrder: updatedShopOrder });
             }
         }
@@ -287,21 +383,16 @@ export const getCurrentOrder = async(req, res) =>{
             lat: assignment.assignedTo?.location?.coordinates?.[1] ?? null,
             lon: assignment.assignedTo?.location?.coordinates?.[0] ?? null
         };
-        console.log("Delivery Boy Location: ", deliveryBoyLocation);
 
         let customerLocation = {
             lat: assignment.Order?.deliveryAddress?.latitude ?? null,
             lon: assignment.Order?.deliveryAddress?.longitude ?? null
         };
-        console.log("Customer Location: ", customerLocation);
 
         let shopLocation = {
             lat: assignment.shop?.location?.coordinates?.[1] ?? null,
             lon: assignment.shop?.location?.coordinates?.[0] ?? null
         };
-        console.log("--- Current Order Shop Debug ---");
-        console.log("Full Shop Object from DB:", JSON.stringify(assignment.shop, null, 2));
-        console.log("Shop Coordinates Extracted:", shopLocation);
 
         let distance = 0;
         if (deliveryBoyLocation.lat && deliveryBoyLocation.lon && customerLocation.lat && customerLocation.lon) {
@@ -323,7 +414,6 @@ export const getCurrentOrder = async(req, res) =>{
     }
 
     catch (error){
-        console.log(error);
         return res.status(500).json({ message: "Failed to fetch current order" });
 
     }
@@ -361,7 +451,7 @@ export const trackOrder = async (req, res) => {
 
         if (!assignment) return res.status(404).json({ message: "No tracking info available yet" });
 
-        if (assignment.Order.user.toString() !== req.userId) {
+        if (assignment.Order.user._id.toString() !== req.userId) {
             return res.status(403).json({ message: "You are not authorized to track this order" });
         }
 
@@ -397,6 +487,45 @@ export const trackOrder = async (req, res) => {
     }
 }
 
+const assignPendingBroadcastsToBoy = async (req) => {
+    try {
+        const deliveryBoy = await User.findById(req.userId);
+        if (deliveryBoy && deliveryBoy.location?.coordinates && deliveryBoy.location?.coordinates.length === 2) {
+            const [lon, lat] = deliveryBoy.location.coordinates;
+             const nearbyShops = await Shop.find({
+                 location: {
+                     $near: {
+                         $geometry: { type: "Point", coordinates: [lon, lat] },
+                         $maxDistance: 10000
+                     }
+                 }
+             });
+             const nearbyShopIds = nearbyShops.map(s => s._id);
+             
+             const pendingAssignments = await DeliveryAssignment.find({
+                 shop: { $in: nearbyShopIds },
+                 status: "broadcasted",
+                 broadcastedTo: { $ne: req.userId }
+             });
+             
+             const io = req.app.get("io");
+             for(let pa of pendingAssignments) {
+                 pa.broadcastedTo.push(req.userId);
+                 await pa.save();
+                 
+                 if (io) {
+                     io.to(`user_${req.userId}`).emit("newAssignment", {
+                         message: "New delivery task available nearby!",
+                         assignmentId: pa._id
+                     });
+                 }
+             }
+        }
+    } catch(err) {
+        console.error("Error matching pending broadcasts:", err);
+    }
+};
+
 export const completeOrderDelivery = async (req, res) => {
     try {
         const { assignmentId } = req.params;
@@ -419,10 +548,37 @@ export const completeOrderDelivery = async (req, res) => {
             }
         }
 
+        await assignPendingBroadcastsToBoy(req);
+
         return res.status(200).json({ message: "Delivery completed successfully" });
     } catch (error) {
         console.error(error);
         return res.status(500).json({ message: "Failed to complete delivery" });
+    }
+}
+
+export const emitLocationUpdate = async (req, res) => {
+    try {
+        const { assignmentId, lat, lon } = req.body;
+        const io = req.app.get("io");
+        if (!io) return res.status(500).json({ message: "IO not initialized" });
+
+        const assignment = await DeliveryAssignment.findById(assignmentId)
+            .populate("Order")
+            .populate("shopOrderId");
+
+        if (assignment && assignment.Order) {
+            const order = assignment.Order;
+            const userId = order.user?._id || order.user;
+            io.to(`user_${userId}`).emit("locationUpdate", {
+                assignmentId,
+                lat,
+                lon
+            });
+        }
+        return res.status(200).json({ success: true });
+    } catch (error) {
+        return res.status(500).json({ message: error.message });
     }
 }
 
@@ -450,7 +606,7 @@ export const sendDeliveryOtp = async (req, res) => {
         
         await sendDeliveryOtpMail(userEmail, otp, orderId);
 
-        return res.status(200).json({ message: "OTP sent to customer's email" });
+        return res.status(200).json({ message: "OTP sent to customer's email", otp });
     } catch (error) {
         console.error(error);
         return res.status(500).json({ message: "Failed to send OTP" });
@@ -490,6 +646,8 @@ export const verifyDeliveryOtp = async (req, res) => {
                 await order.save();
             }
         }
+
+        await assignPendingBroadcastsToBoy(req);
 
         return res.status(200).json({ message: "Order delivered successfully" });
     } catch (error) {

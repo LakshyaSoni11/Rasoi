@@ -1,10 +1,12 @@
 import express from "express"
 import { isAuth } from "../middlewares/isAuth.js"
 import {  getMyOrders, placeOrder, updateOrderStatus, acceptOrderAssignment, completeOrderDelivery, getDeliveryBoyOrders, getCurrentOrder, trackOrder, sendDeliveryOtp, verifyDeliveryOtp } from "../controllers/order.controllers.js"
+import { validate } from "../middlewares/validate.js"
+import { OrderSchema } from "../utils/schemas.js"
 
 const orderRouter = express.Router()
 
-orderRouter.post('/place-order', isAuth, placeOrder)
+orderRouter.post('/place-order', isAuth, validate(OrderSchema), placeOrder)
 orderRouter.get('/my-orders', isAuth, getMyOrders)
 orderRouter.post('/update-status/:orderId/:shopId', isAuth, updateOrderStatus)
 orderRouter.get('/get-current-order', isAuth, getCurrentOrder)

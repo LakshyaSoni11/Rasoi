@@ -36,8 +36,19 @@ const shopSchema = new mongoose.Schema({
             type:[Number],
             required:true
         }
+    },
+    openingTime:{
+        type:String,
+        default:"09:00"
+    },
+    closingTime:{
+        type:String,
+        default:"22:00"
+    },
+    isVerified:{
+        type:Boolean,
+        default:false
     }
-    
 },{timestamps:true})
 
 shopSchema.index({ location: "2dsphere" });

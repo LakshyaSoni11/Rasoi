@@ -16,16 +16,24 @@ const useGetCity = () => {
       const result = await axios.get(
         `${serverUrl}/api/user/get-city?lat=${latitude}&lon=${longitude}`,
       );
-      // console.log(result.data); //city
-      dispatch(
-        setCurrentCity(
-          result.data.address.city ||
-            result.data.address.town ||
-            result.data.address.village,
-        ),
-      );
-      dispatch(setCurrentState(result.data.address.state));
-      // console.log(result.data.address.state);
+      const address = result.data.address;
+      let detectedCity = address.city || 
+                         address.city_district || 
+                         address.state_district || 
+                         address.county || 
+                         address.town || 
+                         address.village || 
+                         "";
+
+      if (detectedCity.match(/Bengaluru|Bangalore/i)) {
+        detectedCity = "Bengaluru";
+      } else {
+        // Normalize other Indian cities
+        detectedCity = detectedCity.replace(/ (Urban|Rural) District| (Urban|Rural)| District| Corporation| City/gi, '').trim();
+      }
+
+      dispatch(setCurrentCity(detectedCity));
+      dispatch(setCurrentState(address.state));
       dispatch(setCurrentAddress(result.data.address.road || result.data.address.suburb || result.data.address.village))
       const finalAddress = result.data.address.road || result.data.address.suburb || result.data.address.village
       dispatch(setAddress(finalAddress))

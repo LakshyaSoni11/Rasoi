@@ -1,13 +1,30 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 
+// eslint-disable-next-line no-unused-vars
+import { motion } from "framer-motion";
+
 const UserShopCard = ({ shop }) => {
   const navigate = useNavigate();
 
   return (
-    <div 
-      className="w-[90px] h-[90px] sm:w-[120px] sm:h-[120px] shrink-0 rounded-2xl overflow-hidden cursor-pointer group border-2 border-[#ff4d2d] relative bg-white shadow-md hover-lift hover:shadow-xl" 
+    <motion.div 
+      initial={{ opacity: 0, scale: 0.9 }}
+      whileInView={{ opacity: 1, scale: 1 }}
+      viewport={{ once: true }}
+      whileHover={{ y: -4, scale: 1.05 }}
+      whileTap={{ scale: 0.95 }}
+      transition={{ type: "spring", stiffness: 300, damping: 20 }}
+      className="w-[90px] h-[90px] sm:w-[120px] sm:h-[120px] shrink-0 rounded-2xl overflow-hidden cursor-pointer group border-2 border-[#ff4d2d] relative bg-white shadow-md focus:outline-none focus:ring-4 focus:ring-orange-200" 
       onClick={() => navigate(`/shop/${shop._id || shop.id}`)}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              navigate(`/shop/${shop._id || shop.id}`);
+          }
+      }}
     >
       <img
         src={shop?.image}
@@ -21,7 +38,7 @@ const UserShopCard = ({ shop }) => {
           {shop?.name}
         </p>
       </div>
-    </div>
+    </motion.div>
   );
 };
 

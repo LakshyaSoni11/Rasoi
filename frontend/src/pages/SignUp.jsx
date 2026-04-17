@@ -7,7 +7,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import axios from "axios";
 import { serverUrl } from "../App";
-import { setUserData } from "../redux/userSlice";
+import { setUserData, triggerRefresh } from "../redux/userSlice";
 const SignUp = () => {
   const primarycolor = "#ff4d2d";
   const hoverColor = "#e64323";
@@ -37,12 +37,12 @@ const SignUp = () => {
         { withCredentials: true },
       );
       dispatch(setUserData(res.data.user))
+      dispatch(triggerRefresh())
       if (res.status === 201) {
         alert(res.data.message);
         navigate("/signin");
       }
     } catch (error) {
-      console.log(error);
       alert(error.response?.data?.message || "Something went wrong");
     }
   };

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { serverUrl } from '../App';
@@ -6,30 +6,35 @@ import Nav from '../components/Nav';
 import { IoMdArrowRoundBack } from "react-icons/io";
 import DeliveryBoyTracking from '../components/DeliveryBoyTracking';
 import FoodLoader from '../components/FoodLoader';
+import { useSelector } from 'react-redux';
 
 const Tracking = () => {
     const { orderId, shopOrderId } = useParams();
     const navigate = useNavigate();
     const [trackingData, setTrackingData] = useState(null);
     const [loading, setLoading] = useState(true);
+    const { refreshTrigger } = useSelector((state) => state.user);
+    const isInitialLoad = React.useRef(true);
 
-    const fetchTrackingInfo = async () => {
+    const fetchTrackingInfo = useCallback(async () => {
         try {
             const res = await axios.get(`${serverUrl}/api/order/track/${orderId}/${shopOrderId}`, { withCredentials: true });
             setTrackingData(res.data);
         } catch (error) {
             console.error("Error fetching tracking data", error);
         } finally {
-            setLoading(false);
+            if (isInitialLoad.current) {
+                setLoading(false);
+                isInitialLoad.current = false;
+            }
         }
-    };
+    }, [orderId, shopOrderId]);
 
     useEffect(() => {
         fetchTrackingInfo();
-        // Poll for updates every 10 seconds to keep the map live
         const interval = setInterval(fetchTrackingInfo, 10000); 
         return () => clearInterval(interval);
-    }, [orderId, shopOrderId]);
+    }, [fetchTrackingInfo, refreshTrigger]);
 
     if (loading) return (
         <div className="min-h-screen bg-[#fff9f6] flex items-center justify-center">

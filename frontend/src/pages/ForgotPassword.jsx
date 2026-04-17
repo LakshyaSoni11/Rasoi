@@ -4,6 +4,7 @@ import { IoMdArrowRoundBack } from "react-icons/io";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { serverUrl } from "../App";
+import toast from "react-hot-toast";
 const ForgotPassword = () => {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
@@ -12,37 +13,36 @@ const ForgotPassword = () => {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
-  const handleSendOtp = async () =>{
+  const handleSendOtp = async () => {
     try {
-        const result = await axios.post(`${serverUrl}/api/auth/send-otp`, {email},{withCredentials:true})
-        console.log(result)
+        await axios.post(`${serverUrl}/api/auth/send-otp`, {email},{withCredentials:true})
+        toast.success("OTP sent to your email!");
         setStep(2)
     } catch (error) {
-      console.log(error)
+        toast.error(error.response?.data?.message || "Failed to send OTP. Check your email.");
     }
   }
 
-  const handleVerifyOtp = async () =>{
+  const handleVerifyOtp = async () => {
     try {
-        const result = await axios.post(`${serverUrl}/api/auth/verify-otp`, {email, otp},{withCredentials:true})
-        console.log(result)
+        await axios.post(`${serverUrl}/api/auth/verify-otp`, {email, otp},{withCredentials:true})
         setStep(3)
     } catch (error) {
-      console.log(error)
+        toast.error(error.response?.data?.message || "Invalid OTP. Please try again.");
     }
   }
 
-  const handleResetPassword = async () =>{
+  const handleResetPassword = async () => {
     if(password !== confirmPassword){
-      alert("Password does not match")
+      toast.error("Passwords do not match");
       return
     }
     try {
-        const result = await axios.post(`${serverUrl}/api/auth/reset-password`, {email, password, confirmPassword},{withCredentials:true})
-        console.log(result)
+        await axios.post(`${serverUrl}/api/auth/reset-password`, {email, password, confirmPassword},{withCredentials:true})
+        toast.success("Password reset successfully! Please sign in.");
         navigate('/signin')
     } catch (error) {
-      console.log(error)
+        toast.error(error.response?.data?.message || "Failed to reset password.");
     }
   }
 

@@ -5,12 +5,13 @@ import { setMyShopData } from "../redux/ownerSlice";
 import { triggerRefresh } from "../redux/userSlice";
 import { useNavigate } from "react-router-dom";
 import { GiForkKnifeSpoon } from "react-icons/gi";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { serverUrl } from "../App";
 import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import axios from "axios";
+import toast from "react-hot-toast";
 
 // Fix for default Leaflet icon inclusion in React
 const customIcon = new L.Icon({
@@ -47,6 +48,8 @@ const CreateEditShop = () => {
       ? [myShopData.location.coordinates[1], myShopData.location.coordinates[0]]
       : [userData?.location?.coordinates?.[1] || 12.9716, userData?.location?.coordinates?.[0] || 77.5946]
   );
+  const [openingTime, setOpeningTime] = useState(myShopData?.openingTime || "09:00");
+  const [closingTime, setClosingTime] = useState(myShopData?.closingTime || "22:00");
   const dispatch = useDispatch();
 
   const handleImageChange = (e) => {
@@ -72,19 +75,20 @@ const CreateEditShop = () => {
       if (backendImage) {
         formData.append("image", backendImage);
       }
+      formData.append("openingTime", openingTime);
+      formData.append("closingTime", closingTime);
       const result = await axios.post(
         `${serverUrl}/api/shop/create-edit`,
         formData,
         { withCredentials: true },
       );
-      console.log(result.data);
       if (result.data?.shop) {
         dispatch(setMyShopData(result.data.shop));
         dispatch(triggerRefresh());
         navigate(-1);
       }
     } catch (error) {
-      console.log(error);
+      toast.error(error.response?.data?.message || "Failed to save shop. Please try again.");
     }
   };
 
@@ -178,6 +182,31 @@ const CreateEditShop = () => {
               value={address}
               onChange={(e) => setAddress(e.target.value)}
             />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">
+                Opening Time
+              </label>
+              <input
+                type="time"
+                className="w-full px-3 py-1.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-sm"
+                value={openingTime}
+                onChange={(e) => setOpeningTime(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">
+                Closing Time
+              </label>
+              <input
+                type="time"
+                className="w-full px-3 py-1.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-sm"
+                value={closingTime}
+                onChange={(e) => setClosingTime(e.target.value)}
+              />
+            </div>
           </div>
 
           <div className="space-y-2">

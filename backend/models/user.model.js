@@ -18,9 +18,13 @@ const userSchema = new mongoose.Schema({
     },
     role:{
         type:String,
-        enum:["user","owner", "deliveryBoy"],
+        enum:["user","owner", "deliveryBoy", "admin"],
         default:"user",
         required:true
+    },
+    isVerified:{
+        type:Boolean,
+        default:false
     },
     resetOtp:{
         type:String
@@ -31,6 +35,14 @@ const userSchema = new mongoose.Schema({
     },
     otpExpires:{
         type:Date
+    },
+    socketId:{
+        type:String,
+        default:""
+    },
+    isOnline:{
+        type:Boolean,
+        default:false
     },
     //geojson format
     location:{

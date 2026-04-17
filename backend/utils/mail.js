@@ -21,9 +21,7 @@ export const sendOtpMail = async (email, otp) => {
             subject: "Your OTP for password reset",
             html: `<h1>Your OTP is ${otp}. It will expire in 5 minutes</h1>`,
         })
-        console.log("Message sent:", info.messageId)
     } catch (error) {
-        console.log("Error in sending OTP", error)
     }
 }
 
@@ -46,8 +44,7 @@ export const sendDeliveryOtpMail = async (email, otp, orderId) => {
                 </div>
             `,
         })
-        console.log("Delivery OTP sent:", info.messageId)
     } catch (error) {
-        console.log("Error in sending Delivery OTP", error)
+        console.error("Nodemailer error:", error);
     }
 }

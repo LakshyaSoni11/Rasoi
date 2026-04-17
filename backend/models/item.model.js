@@ -11,7 +11,7 @@ const itemSchema = new mongoose.Schema({
     },
     shop: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "shop",
+        ref: "Shop",
         required: true
     },
     category: {
@@ -41,10 +41,23 @@ const itemSchema = new mongoose.Schema({
         min:0,
         required:true
     },
+    discountPrice:{
+        type:Number,
+        min:0,
+        default:0
+    },
     foodType:{
         type:String,
         enum:["Veg","Non-Veg"],
         required:true
+    },
+    isBestSeller:{
+        type:Boolean,
+        default:false
+    },
+    isAvailable:{
+        type:Boolean,
+        default:true
     },
     rating:{
         average:{
@@ -59,11 +72,11 @@ const itemSchema = new mongoose.Schema({
             default:0
         }
     },
-    // reviews:{
-    //     type:Number,
-    //     min:0,
-    //     default:0
-    // }
+    reviews:{
+        type:Number,
+        min:0,
+        default:0
+    }
 
 },{timestamps:true})
 
